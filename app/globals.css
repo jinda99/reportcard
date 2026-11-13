@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 15, 23, 42;
+  --background-start-rgb: 248, 250, 252;
+  --background-end-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+/* Custom Nigerian Green Accent & Focus States */
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid #16a34a;
+  outline-offset: 1px;
+}
+
+/* High Fidelity Print Styles for Report Cards */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .no-print,
+  nav,
+  header,
+  footer,
+  aside,
+  button:not(.print-include) {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .report-card-container {
+    box-shadow: none !important;
+    border: 1px solid #94a3b8 !important;
+    margin: 0 !important;
+    padding: 1.5rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-after: always;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border: 1px solid #334155 !important;
+    padding: 4px 8px !important;
+  }
+
+  @page {
+    margin: 1cm;
+    size: portrait;
+  }
+}

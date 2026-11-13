@@ -1,0 +1,110 @@
+{
+  "scheme": {
+    "scaleType": "WAEC_9POINT",
+    "caComponents": [
+      { "key": "test1", "label": "CA Test 1", "max": 10 },
+      { "key": "test2", "label": "CA Test 2", "max": 10 },
+      { "key": "assignment", "label": "Assignment", "max": 20 }
+    ],
+    "examMax": 60,
+    "gradeBands": [
+      { "min": 75, "max": 100, "grade": "A1", "remark": "Excellent", "points": 1 },
+      { "min": 70, "max": 74, "grade": "B2", "remark": "Very Good", "points": 2 },
+      { "min": 65, "max": 69, "grade": "B3", "remark": "Good", "points": 3 },
+      { "min": 60, "max": 64, "grade": "C4", "remark": "Credit", "points": 4 },
+      { "min": 55, "max": 59, "grade": "C5", "remark": "Credit", "points": 5 },
+      { "min": 50, "max": 54, "grade": "C6", "remark": "Credit", "points": 6 },
+      { "min": 45, "max": 49, "grade": "D7", "remark": "Pass", "points": 7 },
+      { "min": 40, "max": 44, "grade": "E8", "remark": "Pass", "points": 8 },
+      { "min": 0, "max": 39, "grade": "F9", "remark": "Fail", "points": 9 }
+    ]
+  },
+  "subjectTieFixture": [
+    {
+      "studentId": "student_alpha",
+      "caScores": { "test1": 10, "test2": 10, "assignment": 20 },
+      "examScore": 55,
+      "expectedTotal": 95,
+      "expectedGrade": "A1",
+      "expectedPosition": 1
+    },
+    {
+      "studentId": "student_beta",
+      "caScores": { "test1": 10, "test2": 10, "assignment": 15 },
+      "examScore": 55,
+      "expectedTotal": 90,
+      "expectedGrade": "A1",
+      "expectedPosition": 2
+    },
+    {
+      "studentId": "student_gamma",
+      "caScores": { "test1": 9, "test2": 9, "assignment": 17 },
+      "examScore": 55,
+      "expectedTotal": 90,
+      "expectedGrade": "A1",
+      "expectedPosition": 2
+    },
+    {
+      "studentId": "student_delta",
+      "caScores": { "test1": 8, "test2": 8, "assignment": 14 },
+      "examScore": 55,
+      "expectedTotal": 85,
+      "expectedGrade": "A1",
+      "expectedPosition": 4
+    }
+  ],
+  "classRankingFixture": {
+    "students": [
+      {
+        "studentId": "s_complete_1",
+        "scores": [
+          { "subjectId": "mth", "total": 95 },
+          { "subjectId": "eng", "total": 85 }
+        ],
+        "expectedAverage": 90.0,
+        "expectedPosition": 1,
+        "isIncomplete": false
+      },
+      {
+        "studentId": "s_complete_2",
+        "scores": [
+          { "subjectId": "mth", "total": 90 },
+          { "subjectId": "eng", "total": 86 }
+        ],
+        "expectedAverage": 88.0,
+        "expectedPosition": 2,
+        "isIncomplete": false
+      },
+      {
+        "studentId": "s_complete_3",
+        "scores": [
+          { "subjectId": "mth", "total": 88 },
+          { "subjectId": "eng", "total": 88 }
+        ],
+        "expectedAverage": 88.0,
+        "expectedPosition": 2,
+        "isIncomplete": false
+      },
+      {
+        "studentId": "s_complete_4",
+        "scores": [
+          { "subjectId": "mth", "total": 80 },
+          { "subjectId": "eng", "total": 82 }
+        ],
+        "expectedAverage": 81.0,
+        "expectedPosition": 4,
+        "isIncomplete": false
+      },
+      {
+        "studentId": "s_incomplete_5",
+        "scores": [
+          { "subjectId": "mth", "total": 95 },
+          { "subjectId": "eng", "total": null }
+        ],
+        "expectedAverage": null,
+        "expectedPosition": null,
+        "isIncomplete": true
+      }
+    ]
+  }
+}

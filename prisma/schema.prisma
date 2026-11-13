@@ -1,0 +1,487 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum SchoolStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  READ_ONLY
+}
+
+enum BillingCycle {
+  TERMLY
+  ANNUAL
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum Role {
+  PLATFORM_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+  PARENT
+}
+
+enum ScaleType {
+  LETTER_AF
+  WAEC_9POINT
+  CUSTOM
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ParentRelationship {
+  FATHER
+  MOTHER
+  GUARDIAN
+}
+
+enum ScoreStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+}
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+}
+
+model School {
+  id                 String       @id @default(cuid())
+  name               String
+  slug               String       @unique
+  logoUrl            String?
+  primaryColor       String?      @default("#16a34a")
+  address            String?
+  phone              String?
+  email              String?
+  status             SchoolStatus @default(PENDING)
+  subscriptionPlanId String?
+  trialEndsAt        DateTime?
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  plan               SubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
+  subscriptions      Subscription[]
+  memberships        Membership[]
+  academicSessions   AcademicSession[]
+  terms              Term[]
+  gradingSchemes     GradingScheme[]
+  classLevels        ClassLevel[]
+  classes            Class[]
+  subjects           Subject[]
+  classSubjects      ClassSubject[]
+  teacherAssignments TeacherAssignment[]
+  students           Student[]
+  parentStudents     ParentStudent[]
+  scoreRecords       ScoreRecord[]
+  termResults        TermResult[]
+  resultPublications ResultPublication[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  invites            Invite[]
+}
+
+model SubscriptionPlan {
+  id           String       @id @default(cuid())
+  name         String
+  priceNgn     Int
+  billingCycle BillingCycle
+  learnerLimit Int?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  schools       School[]
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  schoolId           String
+  planId             String
+  status             SubscriptionStatus @default(TRIALING)
+  providerRef        String?
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  school   School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+  invoices Invoice[]
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  subscriptionId String
+  amountNgn      Int
+  status         InvoiceStatus @default(PENDING)
+  providerRef    String?
+  paidAt         DateTime?
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  platformAdmin      PlatformAdmin?
+  memberships        Membership[]
+  teacherAssignments TeacherAssignment[]
+  parentStudents     ParentStudent[]
+  submittedScores    ScoreRecord[]       @relation("ScoreSubmittedBy")
+  approvedScores     ScoreRecord[]       @relation("ScoreApprovedBy")
+  publishedResults   ResultPublication[] @relation("PublishedBy")
+  auditLogs          AuditLog[]          @relation("AuditActor")
+  notifications      Notification[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  schoolId  String
+  role      Role     // SCHOOL_ADMIN or TEACHER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, schoolId])
+}
+
+model PlatformAdmin {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AcademicSession {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String   // e.g. "2025/2026"
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  terms  Term[]
+}
+
+model Term {
+  id              String   @id @default(cuid())
+  schoolId        String
+  sessionId       String
+  name            String   // "First Term" | "Second Term" | "Third Term"
+  sequence        Int      // 1 | 2 | 3
+  startDate       DateTime
+  endDate         DateTime
+  isCurrent       Boolean  @default(false)
+  gradingSchemeId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  session            AcademicSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  gradingScheme      GradingScheme?      @relation(fields: [gradingSchemeId], references: [id])
+  scoreRecords       ScoreRecord[]
+  termResults        TermResult[]
+  resultPublications ResultPublication[]
+}
+
+model GradingScheme {
+  id           String    @id @default(cuid())
+  schoolId     String
+  name         String
+  scaleType    ScaleType @default(WAEC_9POINT)
+  caComponents Json      // [{key: "test1", label: "CA Test 1", max: 10}, ...]
+  examMax      Int       // e.g. 60
+  gradeBands   Json      // [{min: 75, max: 100, grade: "A1", remark: "Excellent", points: 1}, ...]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  terms  Term[]
+}
+
+model ClassLevel {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String   // "JSS 1"
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes Class[]
+}
+
+model Class {
+  id             String   @id @default(cuid())
+  schoolId       String
+  classLevelId   String
+  name           String   // "JSS 1A"
+  classTeacherId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classLevel         ClassLevel          @relation(fields: [classLevelId], references: [id], onDelete: Cascade)
+  classSubjects      ClassSubject[]
+  students           Student[]
+  termResults        TermResult[]
+  resultPublications ResultPublication[]
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String
+  code      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classSubjects ClassSubject[]
+}
+
+model ClassSubject {
+  id        String   @id @default(cuid())
+  schoolId  String
+  classId   String
+  subjectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class              Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject            Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherAssignments TeacherAssignment[]
+  scoreRecords       ScoreRecord[]
+
+  @@unique([classId, subjectId])
+}
+
+model TeacherAssignment {
+  id             String   @id @default(cuid())
+  schoolId       String
+  teacherUserId  String
+  classSubjectId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher      User         @relation(fields: [teacherUserId], references: [id], onDelete: Cascade)
+  classSubject ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherUserId, classSubjectId])
+}
+
+model Student {
+  id          String    @id @default(cuid())
+  schoolId    String
+  classId     String
+  admissionNo String
+  firstName   String
+  lastName    String
+  middleName  String?
+  gender      Gender
+  dateOfBirth DateTime?
+  photoUrl    String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  school         School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class          Class           @relation(fields: [classId], references: [id], onDelete: Cascade)
+  parentStudents ParentStudent[]
+  scoreRecords   ScoreRecord[]
+  termResults    TermResult[]
+
+  @@unique([schoolId, admissionNo])
+  @@index([schoolId, classId])
+}
+
+model ParentStudent {
+  id           String             @id @default(cuid())
+  schoolId     String
+  parentUserId String
+  studentId    String
+  relationship ParentRelationship @default(GUARDIAN)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  parent  User    @relation(fields: [parentUserId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentUserId, studentId])
+  @@index([parentUserId])
+}
+
+model ScoreRecord {
+  id                String      @id @default(cuid())
+  schoolId          String
+  termId            String
+  classSubjectId    String
+  studentId         String
+  caScores          Json        @default("{}") // {"test1": 8, "test2": 7, "assignment": 9}
+  examScore         Int?
+  totalScore        Int?        // computed
+  grade             String?     // computed
+  subjectPosition   Int?        // computed
+  status            ScoreStatus @default(DRAFT)
+  submittedAt       DateTime?
+  submittedByUserId String?
+  approvedAt        DateTime?
+  approvedByUserId  String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  term         Term         @relation(fields: [termId], references: [id], onDelete: Cascade)
+  classSubject ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  submittedBy  User?        @relation("ScoreSubmittedBy", fields: [submittedByUserId], references: [id])
+  approvedBy   User?        @relation("ScoreApprovedBy", fields: [approvedByUserId], references: [id])
+
+  @@unique([termId, classSubjectId, studentId])
+  @@index([termId, classSubjectId])
+  @@index([studentId, termId])
+}
+
+model TermResult {
+  id                    String    @id @default(cuid())
+  schoolId              String
+  termId                String
+  studentId             String
+  classId               String
+  totalScore            Float     // computed sum across subjects
+  average               Float     // computed average score
+  subjectsCount         Int
+  positionInClass       Int       // computed
+  classSize             Int
+  attendanceDaysOpen    Int?
+  attendanceDaysPresent Int?
+  classTeacherComment   String?
+  headTeacherComment    String?
+  publishedAt           DateTime  @default(now())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  term    Term    @relation(fields: [termId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([termId, studentId])
+}
+
+model ResultPublication {
+  id                String            @id @default(cuid())
+  schoolId          String
+  termId            String
+  classId           String
+  status            PublicationStatus @default(DRAFT)
+  publishedAt       DateTime?
+  publishedByUserId String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  school      School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  term        Term   @relation(fields: [termId], references: [id], onDelete: Cascade)
+  class       Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  publishedBy User?  @relation("PublishedBy", fields: [publishedByUserId], references: [id])
+
+  @@unique([termId, classId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  schoolId  String
+  userId    String
+  type      String
+  title     String
+  body      String
+  readAt    DateTime?
+  linkUrl   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  schoolId    String
+  actorUserId String
+  action      String
+  entityType  String
+  entityId    String
+  before      Json?
+  after       Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  actor  User   @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, createdAt])
+}
+
+model Invite {
+  id         String    @id @default(cuid())
+  schoolId   String
+  email      String
+  role       Role
+  token      String    @unique
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+}
